@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0f14">
+<title>LEANLOG</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #0b0f14; color: #e0e8f0; font-family: 'DM Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { overflow-x: hidden; }
+  #app { min-height: 100vh; background: #0b0f14; padding-bottom: 72px; }
+
+  /* Header */
+  .header { background: linear-gradient(180deg,#0d1520 0%,#0b0f14 100%); border-bottom: 1px solid #1a2535; padding: 16px 18px 12px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 50; }
+  .logo { font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; color: #00e5ff; letter-spacing: 3px; }
+  .date-badge { font-family: 'Space Mono', monospace; font-size: 10px; color: #4a6070; letter-spacing: 1px; margin-top: 2px; }
+  .stats-badge { text-align: right; font-family: 'Space Mono', monospace; font-size: 10px; color: #4a6070; line-height: 1.6; }
+
+  /* Nav */
+  .nav { position: fixed; bottom: 0; left: 0; right: 0; background: #0d1520; border-top: 1px solid #1a2535; display: flex; justify-content: space-around; padding: 8px 0 env(safe-area-inset-bottom, 12px); z-index: 100; }
+  .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; background: none; border: none; cursor: pointer; color: #3a5060; font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 1px; padding: 4px 14px; transition: color 0.2s; }
+  .nav-btn.active { color: #00e5ff; }
+  .nav-icon { font-size: 17px; line-height: 1; }
+
+  /* Layout */
+  .main { padding: 16px 14px 0; display: flex; flex-direction: column; gap: 14px; }
+  .tab-content { display: none; }
+  .tab-content.active { display: flex; flex-direction: column; gap: 14px; }
+
+  /* Cards */
+  .card { background: #0d1520; border: 1px solid #1a2535; border-radius: 12px; padding: 14px 16px; }
+  .card-title { font-family: 'Space Mono', monospace; font-size: 10px; color: #4a6070; letter-spacing: 2px; margin-bottom: 12px; text-transform: uppercase; }
+  .section-hdr { font-family: 'Space Mono', monospace; font-size: 10px; color: #2a4050; letter-spacing: 3px; padding-left: 2px; }
+
+  /* Grid helpers */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+  /* Mini stat cards */
+  .mini-card { background: #0d1520; border: 1px solid #1a2535; border-radius: 10px; padding: 12px 10px; }
+  .mini-card .mc-label { font-family: 'Space Mono', monospace; font-size: 9px; color: #3a5060; letter-spacing: 1px; margin-bottom: 5px; }
+  .mini-card .mc-val { font-family: 'Space Mono', monospace; font-size: 16px; font-weight: 700; line-height: 1; }
+  .mini-card .mc-sub { font-size: 9px; color: #3a5060; margin-top: 3px; }
+  .mini-card .mc-bar-track { height: 2px; background: #1a2535; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .mini-card .mc-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+
+  /* Progress bar */
+  .prog-track { height: 4px; background: #1a2535; border-radius: 4px; margin-top: 10px; overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+
+  /* Macro row */
+  .macro-row { margin-bottom: 10px; }
+  .macro-row .mr-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .macro-row .mr-label { font-size: 11px; color: #8090a0; }
+  .macro-row .mr-val { font-family: 'Space Mono', monospace; font-size: 10px; }
+
+  /* Inputs */
+  input[type=text], input[type=number] { background: #0b0f14; border: 1px solid #1a2535; border-radius: 8px; padding: 9px 12px; color: #e0e8f0; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; width: 100%; }
+  input::placeholder { color: #3a5060; }
+  input:focus { border-color: #2a4060; }
+
+  /* Buttons */
+  .btn { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 1px; border-radius: 8px; padding: 8px 14px; cursor: pointer; border: 1px solid; transition: opacity 0.15s; }
+  .btn:active { opacity: 0.75; }
+  .btn-cyan  { color: #00e5ff; border-color: #00e5ff; background: #00e5ff18; }
+  .btn-green { color: #69ff47; border-color: #69ff47; background: #69ff4718; }
+  .btn-blue  { color: #00b4d8; border-color: #00b4d8; background: #00b4d818; }
+  .btn-orange{ color: #ff9a3c; border-color: #ff9a3c; background: #ff9a3c18; }
+  .btn-ghost { color: #4a6070; border-color: #1a2535; background: #1a2535; }
+  .btn-full  { width: 100%; padding: 13px; font-size: 12px; letter-spacing: 2px; }
+  .btn-yt    { color: #ff5555; border-color: #ff3d0060; background: #1a0a00; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 1px; border: 1px solid #ff3d0060; border-radius: 6px; padding: 6px 8px; cursor: pointer; }
+  .btn-cue   { flex: 1; border-radius: 6px; padding: 6px 8px; cursor: pointer; font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 1px; transition: all 0.15s; }
+  .btn-row   { display: flex; gap: 8px; }
+  .btn-flex  { flex: 1; }
+
+  /* Status badge */
+  .status-badge { border-radius: 6px; padding: 6px 10px; font-family: 'Space Mono', monospace; font-size: 11px; display: inline-block; border: 1px solid; }
+
+  /* Food entries */
+  .food-entry { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #141e2a; }
+  .food-entry:last-of-type { border-bottom: none; }
+  .food-name { font-size: 13px; font-weight: 500; }
+  .food-meta { font-size: 10px; color: #4a6070; font-family: 'Space Mono', monospace; }
+  .food-del { background: none; border: none; color: #ff4444; cursor: pointer; font-size: 16px; padding: 0 4px; }
+
+  /* Quick food buttons */
+  .quick-food { background: #0b0f14; border: 1px solid #1a2535; border-radius: 6px; padding: 7px 10px; color: #c0d0e0; font-family: 'DM Sans', sans-serif; font-size: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; transition: border-color 0.15s; }
+  .quick-food:hover { border-color: #2a4060; }
+  .quick-food span:last-child { color: #4a6070; font-family: 'Space Mono', monospace; font-size: 10px; }
+
+  /* Workout cards */
+  .wo-card { background: #0d1520; border: 1px solid #1a2535; border-radius: 12px; padding: 16px; cursor: pointer; text-align: left; position: relative; overflow: hidden; transition: border-color 0.2s; width: 100%; }
+  .wo-card .wo-glow { position: absolute; top: 0; right: 0; width: 80px; height: 100%; }
+  .wo-label { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+  .wo-tag { font-size: 14px; color: #c0d0e0; margin-top: 2px; font-weight: 500; }
+  .wo-days { font-family: 'Space Mono', monospace; font-size: 10px; color: #4a6070; margin-top: 4px; }
+  .wo-done-badge { font-family: 'Space Mono', monospace; font-size: 10px; padding: 2px 8px; border-radius: 4px; }
+
+  /* Schedule */
+  .sched-row { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #141e2a; }
+  .sched-day { font-family: 'Space Mono', monospace; font-size: 10px; width: 36px; }
+  .sched-name { font-family: 'Space Mono', monospace; font-size: 11px; }
+
+  /* Exercise card */
+  .ex-card { background: #0d1520; border: 1px solid #1a2535; border-radius: 12px; padding: 12px 14px; transition: border-color 0.2s; }
+  .ex-name { font-size: 13px; font-weight: 600; }
+  .ex-meta { font-family: 'Space Mono', monospace; font-size: 10px; color: #4a6070; margin-top: 2px; }
+  .ex-note { font-size: 10px; color: #2a5060; margin-top: 3px; font-style: italic; }
+  .set-tiles { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 10px; }
+  .set-tile { width: 32px; height: 32px; border-radius: 6px; border: 1.5px solid #1a2535; background: #0b0f14; color: #3a5060; font-family: 'Space Mono', monospace; font-size: 10px; cursor: pointer; transition: all 0.15s; }
+  .set-tile.done { background: #00e5ff20; }
+  .ex-actions { display: flex; gap: 6px; margin-top: 0; }
+  .cues-box { margin-top: 10px; background: #060a0f; border-radius: 8px; padding: 10px 12px; }
+  .cues-title { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; margin-bottom: 8px; }
+  .cue-item { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
+  .cue-num { font-family: 'Space Mono', monospace; font-size: 10px; flex-shrink: 0; margin-top: 1px; }
+  .cue-text { font-size: 12px; color: #9ab0c0; line-height: 1.55; }
+
+  /* Water */
+  .water-big { text-align: center; padding: 8px 0 16px; }
+  .water-num { font-family: 'Space Mono', monospace; font-size: 48px; font-weight: 700; color: #00b4d8; line-height: 1; }
+  .water-num span { font-size: 18px; color: #4a6070; }
+  .water-sub { font-size: 11px; color: #4a6070; font-family: 'Space Mono', monospace; margin-top: 4px; }
+  .water-bar-track { height: 16px; background: #0b0f14; border-radius: 8px; overflow: hidden; margin: 0 0 16px; border: 1px solid #1a2535; }
+  .water-bar-fill { height: 100%; background: linear-gradient(90deg,#0077b6,#00b4d8); border-radius: 8px; transition: width 0.4s ease; }
+  .droplets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; justify-content: center; }
+  .drop { font-size: 20px; transition: opacity 0.3s; }
+  .quick-water { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+
+  /* Weight chart */
+  .chart-svg { width: 100%; overflow: visible; }
+
+  /* Weight history */
+  .wt-entry { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #141e2a; }
+
+  /* Back button */
+  .back-row { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+  .back-btn { background: none; border: none; color: #4a6070; font-size: 20px; cursor: pointer; padding: 0; line-height: 1; }
+
+  /* Calorie hero */
+  .cal-hero { display: flex; justify-content: space-between; align-items: flex-start; }
+  .cal-remaining-label { font-family: 'Space Mono', monospace; font-size: 11px; color: #4a6070; letter-spacing: 2px; margin-bottom: 4px; }
+  .cal-remaining-num { font-family: 'Space Mono', monospace; font-size: 40px; font-weight: 700; line-height: 1; }
+  .cal-sub { font-size: 11px; color: #4a6070; margin-top: 4px; }
+
+  /* Ring SVG */
+  .ring-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .ring-label { font-size: 10px; color: #7a8a9a; font-family: 'Space Mono', monospace; text-transform: uppercase; letter-spacing: 1px; }
+  .ring-sub { font-size: 9px; font-family: 'Space Mono', monospace; }
+
+  /* Workout detail header */
+  .wo-detail-hdr { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; }
+  .wo-detail-sub { font-size: 11px; color: #4a6070; font-family: 'Space Mono', monospace; }
+
+  /* Utility */
+  .hidden { display: none !important; }
+  .mt8 { margin-top: 8px; }
+  .mt10 { margin-top: 10px; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .mono { font-family: 'Space Mono', monospace; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #0b0f14; }
+  ::-webkit-scrollbar-thumb { background: #1a2535; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div>
+      <div class="logo">LEANLOG</div>
+      <div class="date-badge" id="headerDate"></div>
+    </div>
+    <div class="stats-badge">
+      <div>MITCH · 32M · 82KG</div>
+      <div style="color:#2a4050">TARGET: 75KG</div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <div class="main" id="mainContent">
+
+    <!-- ── DASHBOARD ── -->
+    <div id="tab-dashboard" class="tab-content active">
+      <div class="section-hdr">TODAY'S OVERVIEW</div>
+
+      <div class="card">
+        <div class="cal-hero">
+          <div>
+            <div class="cal-remaining-label">CALORIES REMAINING</div>
+            <div class="cal-remaining-num" id="dash-cal-remaining">1900</div>
+            <div class="cal-sub" id="dash-cal-sub">0 consumed · 1900 goal</div>
+          </div>
+          <div class="ring-wrap">
+            <svg width="80" height="80" id="ring-cal-svg">
+              <circle cx="40" cy="40" r="33" fill="none" stroke="#1e2630" stroke-width="7"/>
+              <circle cx="40" cy="40" r="33" fill="none" stroke="#00e5ff" stroke-width="7"
+                stroke-dasharray="0 207.3" stroke-linecap="round"
+                transform="rotate(-90 40 40)" id="ring-cal-arc" style="transition:stroke-dasharray 0.5s ease"/>
+              <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle"
+                fill="#fff" font-family="'Space Mono',monospace" font-size="13" font-weight="700" id="ring-cal-text">0</text>
+            </svg>
+            <span class="ring-label">KCAL</span>
+            <span class="ring-sub" id="ring-cal-sub" style="color:#00e5ff">/1900</span>
+          </div>
+        </div>
+        <div class="prog-track"><div class="prog-fill" id="dash-cal-bar" style="width:0%;background:#00e5ff"></div></div>
+      </div>
+
+      <div class="grid-3">
+        <div class="mini-card">
+          <div class="mc-label">PROTEIN</div>
+          <div class="mc-val" id="dash-pro-val" style="color:#69ff47">0g</div>
+          <div class="mc-sub">/148g</div>
+          <div class="mc-bar-track"><div class="mc-bar-fill" id="dash-pro-bar" style="width:0%;background:#69ff47"></div></div>
+        </div>
+        <div class="mini-card">
+          <div class="mc-label">WATER</div>
+          <div class="mc-val" id="dash-water-val" style="color:#00b4d8">0.0L</div>
+          <div class="mc-sub">/3L</div>
+          <div class="mc-bar-track"><div class="mc-bar-fill" id="dash-water-bar" style="width:0%;background:#00b4d8"></div></div>
+        </div>
+        <div class="mini-card">
+          <div class="mc-label">WEIGHT</div>
+          <div class="mc-val" id="dash-wt-val" style="color:#ff9a3c">82kg</div>
+          <div class="mc-sub">LAST LOG</div>
+          <div class="mc-bar-track"><div class="mc-bar-fill" id="dash-wt-bar" style="width:91%;background:#ff9a3c"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">MACRO TARGETS</div>
+        <div class="macro-row">
+          <div class="mr-header"><span class="mr-label">Protein</span><span class="mr-val" id="dash-m-pro" style="color:#69ff47">0g / 148g</span></div>
+          <div class="prog-track" style="margin-top:4px"><div class="prog-fill" id="dash-mb-pro" style="width:0%;background:#69ff47"></div></div>
+        </div>
+        <div class="macro-row">
+          <div class="mr-header"><span class="mr-label">Calories</span><span class="mr-val" id="dash-m-cal" style="color:#00e5ff">0 / 1900 kcal</span></div>
+          <div class="prog-track" style="margin-top:4px"><div class="prog-fill" id="dash-mb-cal" style="width:0%;background:#00e5ff"></div></div>
+        </div>
+        <div class="macro-row" style="margin-bottom:0">
+          <div class="mr-header"><span class="mr-label">Water</span><span class="mr-val" id="dash-m-water" style="color:#00b4d8">0.0 / 3.0L</span></div>
+          <div class="prog-track" style="margin-top:4px"><div class="prog-fill" id="dash-mb-water" style="width:0%;background:#00b4d8"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">TODAY'S TRAINING</div>
+        <div id="dash-workout-status" style="color:#2a4050;font-family:'Space Mono',monospace;font-size:12px">No workout logged yet</div>
+      </div>
+    </div>
+
+    <!-- ── FOOD ── -->
+    <div id="tab-food" class="tab-content">
+      <div class="section-hdr">FOOD LOG</div>
+      <div class="grid-2">
+        <div class="mini-card">
+          <div class="mc-label">CALORIES</div>
+          <div class="mc-val" id="food-cal-val" style="color:#00e5ff">0</div>
+          <div class="mc-sub">/ 1900</div>
+          <div class="mc-bar-track"><div class="mc-bar-fill" id="food-cal-bar" style="width:0%;background:#00e5ff"></div></div>
+        </div>
+        <div class="mini-card">
+          <div class="mc-label">PROTEIN</div>
+          <div class="mc-val" id="food-pro-val" style="color:#69ff47">0g</div>
+          <div class="mc-sub">/ 148g</div>
+          <div class="mc-bar-track"><div class="mc-bar-fill" id="food-pro-bar" style="width:0%;background:#69ff47"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">LOG FOOD</div>
+        <input type="text" id="food-name" placeholder="Food name..." style="margin-bottom:8px">
+        <div class="grid-2" style="gap:8px;margin-bottom:8px">
+          <input type="number" id="food-cal" placeholder="Calories">
+          <input type="number" id="food-pro" placeholder="Protein (g)">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-cyan" onclick="addFood()">+ ADD</button>
+          <button class="btn btn-ghost" onclick="toggleQuick()">QUICK ADD ▾</button>
+        </div>
+        <div id="quick-foods" class="hidden" style="margin-top:10px;display:flex;flex-direction:column;gap:4px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">TODAY'S ENTRIES</div>
+        <div id="food-list"></div>
+        <div id="food-totals" class="hidden" style="padding-top:10px;display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:11px">
+          <span style="color:#00e5ff" id="food-total-cal"></span>
+          <span style="color:#69ff47" id="food-total-pro"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── WATER ── -->
+    <div id="tab-water" class="tab-content">
+      <div class="section-hdr">WATER INTAKE</div>
+      <div class="card">
+        <div class="water-big">
+          <div class="water-num"><span id="water-litres">0.00</span><span>L</span></div>
+          <div class="water-sub" id="water-sub">OF 3L GOAL · 0 GLASSES</div>
+        </div>
+        <div class="water-bar-track"><div class="water-bar-fill" id="water-bar" style="width:0%"></div></div>
+        <div class="droplets" id="droplets"></div>
+        <div class="card-title">QUICK ADD</div>
+        <div class="quick-water">
+          <button class="btn btn-blue" onclick="addWater(150)">+150ml</button>
+          <button class="btn btn-blue" onclick="addWater(250)">+250ml</button>
+          <button class="btn btn-blue" onclick="addWater(350)">+350ml</button>
+          <button class="btn btn-blue" onclick="addWater(500)">+500ml</button>
+          <button class="btn btn-blue" onclick="addWater(750)">+750ml</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ghost btn-flex" onclick="resetWater()">RESET</button>
+          <button class="btn btn-blue" style="flex:2" onclick="addWater(250)">+ 1 GLASS (250ml)</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">HYDRATION STATUS</div>
+        <div id="hydration-status"></div>
+        <div style="margin-top:8px;font-size:12px;color:#4a6070">Remaining: <span id="water-remaining" style="color:#00b4d8;font-family:'Space Mono',monospace">3.0L</span></div>
+      </div>
+    </div>
+
+    <!-- ── WORKOUT ── -->
+    <div id="tab-workout" class="tab-content">
+      <!-- Workout list view -->
+      <div id="wo-list-view">
+        <div class="section-hdr">TRAINING PLAN</div>
+        <div id="wo-cards" style="display:flex;flex-direction:column;gap:12px;margin-top:14px"></div>
+        <div class="card" style="margin-top:14px">
+          <div class="card-title">WEEKLY SCHEDULE</div>
+          <div id="schedule"></div>
+        </div>
+      </div>
+      <!-- Workout detail view -->
+      <div id="wo-detail-view" class="hidden">
+        <div class="back-row">
+          <button class="back-btn" onclick="closeWorkout()">←</button>
+          <div>
+            <div class="wo-detail-hdr" id="wo-detail-title"></div>
+            <div class="wo-detail-sub" id="wo-detail-progress"></div>
+          </div>
+        </div>
+        <div class="prog-track"><div class="prog-fill" id="wo-prog-fill" style="width:0%"></div></div>
+        <div id="wo-exercises" style="display:flex;flex-direction:column;gap:12px;margin-top:12px"></div>
+        <button class="btn btn-full mt10" id="wo-complete-btn" onclick="markWorkoutComplete()"></button>
+      </div>
+    </div>
+
+    <!-- ── WEIGHT ── -->
+    <div id="tab-weight" class="tab-content">
+      <div class="section-hdr">WEIGHT LOG</div>
+      <div class="grid-3">
+        <div class="mini-card">
+          <div class="mc-label">CURRENT</div>
+          <div class="mc-val" id="wt-current" style="color:#ff9a3c">82kg</div>
+          <div class="mc-sub">LAST LOG</div>
+          <div class="mc-bar-track"><div class="mc-bar-fill" style="width:100%;background:#ff9a3c"></div></div>
+        </div>
+        <div class="mini-card">
+          <div class="mc-label">CHANGE</div>
+          <div class="mc-val" id="wt-change" style="color:#69ff47">0kg</div>
+          <div class="mc-sub">FROM START</div>
+          <div class="mc-bar-track"><div class="mc-bar-fill" id="wt-change-bar" style="width:100%;background:#69ff47"></div></div>
+        </div>
+        <div class="mini-card">
+          <div class="mc-label">TO GO</div>
+          <div class="mc-val" id="wt-togo" style="color:#00e5ff">7kg</div>
+          <div class="mc-sub">TO TARGET</div>
+          <div class="mc-bar-track"><div class="mc-bar-fill" style="width:100%;background:#00e5ff"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">LOG WEIGHT</div>
+        <div class="btn-row" style="margin-bottom:8px">
+          <input type="number" step="0.1" id="wt-kg" placeholder="Weight (kg)" style="flex:1">
+          <input type="text" id="wt-note" placeholder="Note (optional)" style="flex:2">
+        </div>
+        <button class="btn btn-orange" onclick="logWeight()">+ LOG WEIGHT</button>
+      </div>
+      <div class="card" id="wt-chart-card" style="display:none">
+        <div class="card-title">PROGRESS CHART</div>
+        <svg class="chart-svg" id="wt-chart" height="80"></svg>
+      </div>
+      <div class="card">
+        <div class="card-title">HISTORY</div>
+        <div id="wt-history"></div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="nav">
+    <button class="nav-btn active" data-tab="dashboard" onclick="switchTab('dashboard',this)">
+      <span class="nav-icon">◈</span>TODAY
+    </button>
+    <button class="nav-btn" data-tab="food" onclick="switchTab('food',this)">
+      <span class="nav-icon">◉</span>FOOD
+    </button>
+    <button class="nav-btn" data-tab="water" onclick="switchTab('water',this)">
+      <span class="nav-icon">◎</span>WATER
+    </button>
+    <button class="nav-btn" data-tab="workout" onclick="switchTab('workout',this)">
+      <span class="nav-icon">◆</span>TRAIN
+    </button>
+    <button class="nav-btn" data-tab="weight" onclick="switchTab('weight',this)">
+      <span class="nav-icon">◇</span>WEIGHT
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<script>
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const CAL_GOAL = 1900, PROTEIN_GOAL = 148, WATER_GOAL = 3000, WEIGHT_TARGET = 75;
+
+const WORKOUTS = {
+  A: {
+    label: "Workout A", tag: "Push + Row", days: "Mon / Thu", color: "#00e5ff",
+    exercises: [
+      { name: "Row Machine Warm-up", sets: 1, reps: "5 min easy", rest: "—", note: "NordicTrack · low resistance",
+        cues: ["Sit tall with a slight lean back at the finish — don't hunch.", "Drive with your legs first, then lean back, then pull arms to lower chest.", "Keep strokes slow and controlled — this is just warming up joints and blood flow.", "Aim for a stroke rate of around 18–20 spm."],
+        yt: "https://www.youtube.com/results?search_query=rowing+machine+proper+form+beginners" },
+      { name: "Push-ups", sets: 4, reps: "10–15", rest: "60s", note: "Bodyweight · chest to floor",
+        cues: ["Hands just wider than shoulder-width, fingers pointing forward.", "Body forms a rigid plank from head to heels — squeeze glutes and core.", "Lower until your chest touches the floor, elbows at ~45° from your torso.", "Press explosively back up. If you can't hit 10, drop to knee push-ups."],
+        yt: "https://www.youtube.com/results?search_query=perfect+push+up+form+technique" },
+      { name: "DB Overhead Press", sets: 3, reps: "12–15", rest: "75s", note: "7kg or 10kg DBs",
+        cues: ["Stand or sit with DBs at shoulder height, palms facing forward.", "Brace your core hard — don't arch your lower back.", "Press straight up until arms are fully extended overhead.", "Lower slowly under control — 2 seconds down."],
+        yt: "https://www.youtube.com/results?search_query=dumbbell+overhead+shoulder+press+form" },
+      { name: "DB Lateral Raises", sets: 3, reps: "15–20", rest: "45s", note: "2kg or 5kg DBs",
+        cues: ["Start with DBs at your sides, slight bend in elbows.", "Raise arms out to the side to just above shoulder height — like pouring water from a jug.", "Lead with your elbows, not your hands.", "Lower slowly. These should burn — use light weight (2–5kg) and high reps."],
+        yt: "https://www.youtube.com/results?search_query=dumbbell+lateral+raise+proper+form" },
+      { name: "Band Chest Fly", sets: 3, reps: "15–20", rest: "45s", note: "Resistance band · anchor at chest height",
+        cues: ["Anchor band behind you at chest height (door, post, or step on it).", "Stand in a split stance for stability, arms wide with slight bend in elbows.", "Bring hands together in front of your chest in a hugging arc.", "Squeeze your chest hard at the peak, then slowly open back out."],
+        yt: "https://www.youtube.com/results?search_query=resistance+band+chest+fly+standing" },
+      { name: "Tricep Band Pushdown", sets: 3, reps: "15–20", rest: "45s", note: "Resistance band · anchor overhead",
+        cues: ["Anchor band overhead (over a door, pull-up bar, or high hook).", "Tuck elbows tight to your sides — they stay still throughout.", "Push handles down until arms are fully extended.", "Squeeze triceps at the bottom, then control the return slowly."],
+        yt: "https://www.youtube.com/results?search_query=resistance+band+tricep+pushdown+form" },
+      { name: "Row Machine — Power Strokes", sets: 4, reps: "10 hard strokes", rest: "60s", note: "NordicTrack · max effort each stroke",
+        cues: ["Each stroke is all-out effort — think of it like a short sprint.", "Explode through your legs, swing back, then yank the handle hard to lower chest.", "Recover slowly (2:1 recovery-to-drive ratio).", "Rest 60s between sets. This builds explosive pulling power."],
+        yt: "https://www.youtube.com/results?search_query=rowing+machine+power+stroke+technique" },
+      { name: "Band Pull-apart", sets: 3, reps: "20", rest: "30s", note: "Resistance band · arms straight",
+        cues: ["Hold band with both hands at shoulder width, arms straight out in front.", "Pull band apart by squeezing your shoulder blades together.", "Arms end up wide at your sides — keep them straight throughout.", "Control the return. This targets rear delts and upper back posture muscles."],
+        yt: "https://www.youtube.com/results?search_query=resistance+band+pull+apart+exercise+form" },
+    ]
+  },
+  B: {
+    label: "Workout B", tag: "Row Endurance", days: "Wed", color: "#69ff47",
+    exercises: [
+      { name: "Row Machine Warm-up", sets: 1, reps: "5 min easy", rest: "—", note: "NordicTrack · low resistance, focus on form",
+        cues: ["Use this to dial in your technique before the hard intervals.", "Sequence every stroke: legs → lean back → arms. Reverse to recover: arms → lean forward → legs.", "Keep your back flat, not rounded — imagine tall posture throughout.", "Breathe out on the drive, in on the recovery."],
+        yt: "https://www.youtube.com/results?search_query=rowing+machine+technique+beginners" },
+      { name: "Row Intervals — Hard", sets: 6, reps: "2 min on / 1 min off", rest: "60s", note: "NordicTrack · rate 26–28 spm",
+        cues: ["Target stroke rate of 26–28 strokes per minute — hard but sustainable.", "Push through your heels on the drive, not your toes.", "Aim for consistent splits — don't go out too hard on interval 1.", "During rest: hands on knees, breathe. Don't slouch."],
+        yt: "https://www.youtube.com/results?search_query=rowing+machine+interval+training+workout" },
+      { name: "Row Steady State", sets: 1, reps: "10 min @ 70%", rest: "—", note: "NordicTrack · conversational pace",
+        cues: ["You should be able to hold a conversation — if not, slow down.", "Rate around 22–24 spm. Focus on long, smooth strokes.", "This burns fat and builds aerobic base. Don't skip it even if you're tired.", "Check your posture every minute — sit tall, shoulders relaxed."],
+        yt: "https://www.youtube.com/results?search_query=rowing+machine+steady+state+cardio" },
+      { name: "Single-arm DB Row", sets: 3, reps: "12 ea side", rest: "60s", note: "10kg DB · brace on knee",
+        cues: ["Place same-side hand and knee on a bench or sturdy surface for support.", "Let the DB hang straight down, arm fully extended at the start.", "Pull elbow straight back past your hip — like starting a lawnmower.", "Keep your torso parallel to the floor and avoid rotating your shoulders."],
+        yt: "https://www.youtube.com/results?search_query=single+arm+dumbbell+row+proper+form" },
+      { name: "Band Seated Row", sets: 3, reps: "15–20", rest: "45s", note: "Resistance band · loop around feet seated",
+        cues: ["Sit on the floor with legs extended, loop band around both feet.", "Start with arms straight, slight forward lean from hips.", "Pull handles to your lower chest/navel, driving elbows back.", "Squeeze shoulder blades together at the finish, then slowly extend."],
+        yt: "https://www.youtube.com/results?search_query=resistance+band+seated+row+form" },
+      { name: "DB Bent-over Row (both arms)", sets: 3, reps: "12–15", rest: "60s", note: "7kg or 10kg DBs",
+        cues: ["Hinge forward at hips to ~45°, soft knees, back flat and rigid.", "Let DBs hang straight down from your shoulders.", "Pull both elbows back simultaneously, keeping them close to your body.", "Squeeze shoulder blades at the top. Lower with control — 2 seconds."],
+        yt: "https://www.youtube.com/results?search_query=dumbbell+bent+over+row+both+arms+form" },
+      { name: "Band Face Pulls", sets: 3, reps: "20", rest: "30s", note: "Resistance band · anchor at face height",
+        cues: ["Anchor band at face height. Hold with both hands, palms facing down.", "Pull the band toward your face, separating your hands as you do.", "Elbows flare high and wide — finish with hands either side of your head.", "Excellent for shoulder health and rear delts. Never rush these."],
+        yt: "https://www.youtube.com/results?search_query=resistance+band+face+pull+form" },
+      { name: "Row Machine Cool-down", sets: 1, reps: "3 min easy", rest: "—", note: "NordicTrack · very low effort",
+        cues: ["Bring heart rate back down gradually — don't just stop and sit.", "Very light resistance, slow stroke rate (16–18 spm).", "Focus on your breathing — slow it down deliberately.", "Good time to mentally review your form from today's session."],
+        yt: "https://www.youtube.com/results?search_query=rowing+machine+cool+down" },
+    ]
+  },
+  C: {
+    label: "Workout C", tag: "Strength Sprint", days: "Sat", color: "#ff6d00",
+    exercises: [
+      { name: "Row Machine Warm-up", sets: 1, reps: "5 min easy", rest: "—", note: "NordicTrack · loosen up",
+        cues: ["Gradually increase pace over 5 minutes — start very easy.", "Focus on hip flexor and hamstring mobility through the full stroke.", "Legs-back-arms sequence every stroke. Nice and loose.", "This is Saturday's big session — warm up properly."],
+        yt: "https://www.youtube.com/results?search_query=rowing+machine+warm+up+routine" },
+      { name: "DB Goblet Squat", sets: 4, reps: "15–20", rest: "60s", note: "10kg DB · held at chest",
+        cues: ["Hold DB vertically at your chest with both hands cupped underneath.", "Feet shoulder-width apart, toes turned slightly out.", "Squat deep — aim for thighs parallel or below. Keep chest up.", "Drive through your heels to stand. Don't let knees cave inward."],
+        yt: "https://www.youtube.com/results?search_query=goblet+squat+dumbbell+form+technique" },
+      { name: "DB Romanian Deadlift", sets: 4, reps: "12–15", rest: "75s", note: "10kg DBs · hinge at hips, soft knees",
+        cues: ["Hold DBs in front of your thighs, slight bend in knees.", "Push your hips back — not down — while keeping your back flat.", "Lower DBs along your legs until you feel a strong hamstring stretch.", "Drive hips forward to return to standing. Squeeze glutes at the top."],
+        yt: "https://www.youtube.com/results?search_query=dumbbell+romanian+deadlift+form" },
+      { name: "DB Reverse Lunge", sets: 3, reps: "10 ea leg", rest: "60s", note: "7kg or 10kg DBs",
+        cues: ["Stand tall, DBs at your sides. Step one foot back onto the ball of your foot.", "Lower your back knee toward the floor — don't let it slam down.", "Front shin stays vertical, front knee tracks over your toes.", "Push through your front heel to return to standing. Alternate legs."],
+        yt: "https://www.youtube.com/results?search_query=dumbbell+reverse+lunge+form+technique" },
+      { name: "Bodyweight Squat Jumps", sets: 4, reps: "15", rest: "45s", note: "Bodyweight · land softly",
+        cues: ["Squat down to parallel, then explode upward as high as you can.", "Swing arms up to help drive you off the ground.", "Land softly through toes → midfoot → heels to absorb impact.", "Immediately sink into the next squat. Keep a fast, bouncy rhythm."],
+        yt: "https://www.youtube.com/results?search_query=squat+jumps+proper+form+technique" },
+      { name: "Row Sprints", sets: 8, reps: "20s max / 40s rest", rest: "—", note: "NordicTrack · all-out effort",
+        cues: ["Every 20 seconds is absolute maximum effort — no pacing.", "High stroke rate (32–36 spm) and max power every stroke.", "40 seconds rest: hands on knees, catch your breath.", "This is the hardest part of your week — push through it."],
+        yt: "https://www.youtube.com/results?search_query=rowing+machine+sprint+intervals+HIIT" },
+      { name: "DB Farmers Carry", sets: 4, reps: "30 steps", rest: "45s", note: "10kg DBs · tall posture",
+        cues: ["Hold a DB in each hand at your sides, arms straight.", "Walk with purpose — tall spine, shoulders back and down.", "Brace your core like you're about to be punched.", "Count 30 steps each set. Builds grip, core, and traps."],
+        yt: "https://www.youtube.com/results?search_query=farmers+carry+dumbbell+form+tutorial" },
+      { name: "Plank", sets: 3, reps: "30–45s", rest: "30s", note: "Bodyweight · brace hard",
+        cues: ["Forearms on the floor, elbows under shoulders, body in a straight line.", "Squeeze everything: glutes, quads, abs — all at once.", "Don't let your hips sag or pike up. Imagine someone pushing down on your lower back.", "Breathe in through your nose, out through your mouth. Don't hold your breath."],
+        yt: "https://www.youtube.com/results?search_query=perfect+plank+form+core+exercise" },
+      { name: "DB Russian Twist", sets: 3, reps: "20 total", rest: "30s", note: "5kg DB · controlled rotation",
+        cues: ["Sit on the floor, knees bent, feet slightly raised, torso leaned back ~45°.", "Hold DB with both hands at chest. Rotate side to side, tapping near the floor.", "The rotation comes from your obliques — don't just swing your arms.", "Keep your chest up and lower back from rounding."],
+        yt: "https://www.youtube.com/results?search_query=russian+twist+dumbbell+form+abs" },
+    ]
+  }
+};
+
+const COMMON_FOODS = [
+  { name: "Chicken Breast 100g", cal: 165, protein: 31 },
+  { name: "Greek Yoghurt 170g", cal: 100, protein: 17 },
+  { name: "Eggs x2", cal: 140, protein: 12 },
+  { name: "Oats 80g", cal: 297, protein: 10 },
+  { name: "Protein Shake", cal: 130, protein: 25 },
+  { name: "Banana", cal: 89, protein: 1 },
+  { name: "Brown Rice 180g cooked", cal: 220, protein: 5 },
+  { name: "Tuna Can 95g", cal: 90, protein: 20 },
+  { name: "Almonds 30g", cal: 174, protein: 6 },
+  { name: "Broccoli 150g", cal: 51, protein: 4 },
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const todayKey = new Date().toISOString().split("T")[0];
+
+function loadState(k, def) {
+  try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; }
+}
+function saveState(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+
+let days    = loadState("flt_days", {});
+let weights = loadState("flt_weights", []);
+
+function today() {
+  if (!days[todayKey]) days[todayKey] = { foods: [], water: 0, workout: null, completedSets: {} };
+  return days[todayKey];
+}
+function saveDay() { saveState("flt_days", days); }
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+function pct(v, m) { return Math.min(v / m * 100, 100).toFixed(1) + "%"; }
+function clamp(v, mn, mx) { return Math.min(Math.max(v, mn), mx); }
+
+function totalCal() { return today().foods.reduce((s, f) => s + (f.cal || 0), 0); }
+function totalPro() { return today().foods.reduce((s, f) => s + (f.protein || 0), 0); }
+
+// ─── HEADER DATE ─────────────────────────────────────────────────────────────
+$("headerDate").textContent = new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "short" }).toUpperCase();
+
+// ─── TAB SWITCHING ────────────────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  $("tab-" + id).classList.add("active");
+  btn.classList.add("active");
+  if (id === "dashboard") renderDashboard();
+  if (id === "food") renderFood();
+  if (id === "water") renderWater();
+  if (id === "workout") renderWorkoutList();
+  if (id === "weight") renderWeight();
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const cal = totalCal(), pro = totalPro(), water = today().water;
+  const calLeft = CAL_GOAL - cal;
+  const lastWt = weights.length ? weights[weights.length - 1].kg : 82;
+  const calColor = calLeft >= 0 ? "#00e5ff" : "#ff4444";
+
+  $("dash-cal-remaining").textContent = calLeft;
+  $("dash-cal-remaining").style.color = calColor;
+  $("dash-cal-sub").textContent = `${cal} consumed · ${CAL_GOAL} goal`;
+  $("dash-cal-bar").style.width = pct(cal, CAL_GOAL);
+  $("dash-cal-bar").style.background = calColor;
+
+  // Ring
+  const circ = 2 * Math.PI * 33;
+  const arc = Math.min(cal / CAL_GOAL, 1) * circ;
+  const ringArc = $("ring-cal-arc");
+  ringArc.setAttribute("stroke-dasharray", `${arc} ${circ}`);
+  ringArc.setAttribute("stroke", calColor);
+  $("ring-cal-text").textContent = cal;
+  $("ring-cal-sub").textContent = `/${CAL_GOAL}`;
+  $("ring-cal-sub").style.color = calColor;
+
+  $("dash-pro-val").textContent = pro + "g";
+  $("dash-pro-bar").style.width = pct(pro, PROTEIN_GOAL);
+  $("dash-water-val").textContent = (water / 1000).toFixed(1) + "L";
+  $("dash-water-bar").style.width = pct(water, WATER_GOAL);
+  $("dash-wt-val").textContent = lastWt + "kg";
+
+  $("dash-m-pro").textContent = `${pro}g / ${PROTEIN_GOAL}g`;
+  $("dash-mb-pro").style.width = pct(pro, PROTEIN_GOAL);
+  $("dash-m-cal").textContent = `${cal} / ${CAL_GOAL} kcal`;
+  $("dash-mb-cal").style.background = calColor;
+  $("dash-mb-cal").style.width = pct(cal, CAL_GOAL);
+  $("dash-m-water").textContent = `${(water / 1000).toFixed(1)} / 3.0L`;
+  $("dash-mb-water").style.width = pct(water, WATER_GOAL);
+
+  const wk = today().workout;
+  if (wk && WORKOUTS[wk]) {
+    $("dash-workout-status").textContent = `✓ ${WORKOUTS[wk].label} — ${WORKOUTS[wk].tag} COMPLETED`;
+    $("dash-workout-status").style.color = WORKOUTS[wk].color;
+  } else {
+    $("dash-workout-status").textContent = "No workout logged yet";
+    $("dash-workout-status").style.color = "#2a4050";
+  }
+}
+
+// ─── FOOD ─────────────────────────────────────────────────────────────────────
+let quickVisible = false;
+
+function renderFood() {
+  const cal = totalCal(), pro = totalPro();
+  $("food-cal-val").textContent = cal;
+  $("food-cal-bar").style.width = pct(cal, CAL_GOAL);
+  $("food-pro-val").textContent = pro + "g";
+  $("food-pro-bar").style.width = pct(pro, PROTEIN_GOAL);
+
+  const list = $("food-list");
+  const foods = today().foods;
+  if (!foods.length) {
+    list.innerHTML = `<div style="color:#2a4050;font-size:12px;font-family:'Space Mono',monospace">No food logged yet.</div>`;
+    $("food-totals").classList.add("hidden");
+  } else {
+    list.innerHTML = foods.map(f => `
+      <div class="food-entry">
+        <div><div class="food-name">${f.name}</div><div class="food-meta">${f.cal} kcal · ${f.protein}g protein</div></div>
+        <button class="food-del" onclick="removeFood(${f.id})">✕</button>
+      </div>`).join("");
+    $("food-totals").classList.remove("hidden");
+    $("food-totals").style.display = "flex";
+    $("food-total-cal").textContent = `TOTAL: ${cal} kcal`;
+    $("food-total-pro").textContent = `${pro}g protein`;
+  }
+}
+
+function buildQuickFoods() {
+  const qf = $("quick-foods");
+  qf.innerHTML = COMMON_FOODS.map(f => `
+    <button class="quick-food" onclick="quickAdd('${f.name.replace(/'/g,"\\'")}',${f.cal},${f.protein})">
+      <span>${f.name}</span><span>${f.cal}kcal · ${f.protein}g</span>
+    </button>`).join("");
+}
+
+function toggleQuick() {
+  quickVisible = !quickVisible;
+  const el = $("quick-foods");
+  if (quickVisible) { el.classList.remove("hidden"); el.style.display = "flex"; buildQuickFoods(); }
+  else { el.classList.add("hidden"); }
+}
+
+function addFood() {
+  const name = $("food-name").value.trim();
+  const cal = parseFloat($("food-cal").value);
+  const pro = parseFloat($("food-pro").value) || 0;
+  if (!name || isNaN(cal)) return;
+  today().foods.push({ id: Date.now(), name, cal, protein: pro });
+  saveDay();
+  $("food-name").value = ""; $("food-cal").value = ""; $("food-pro").value = "";
+  renderFood();
+}
+
+function quickAdd(name, cal, protein) {
+  today().foods.push({ id: Date.now(), name, cal, protein });
+  saveDay();
+  $("quick-foods").classList.add("hidden");
+  quickVisible = false;
+  renderFood();
+}
+
+function removeFood(id) {
+  today().foods = today().foods.filter(f => f.id !== id);
+  saveDay();
+  renderFood();
+}
+
+// ─── WATER ────────────────────────────────────────────────────────────────────
+function renderWater() {
+  const w = today().water;
+  const p = w / WATER_GOAL;
+  const glasses = Math.round(w / 250);
+  $("water-litres").textContent = (w / 1000).toFixed(2);
+  $("water-sub").textContent = `OF 3L GOAL · ${glasses} GLASSES`;
+  $("water-bar").style.width = Math.min(p * 100, 100) + "%";
+  $("water-remaining").textContent = Math.max(0, Math.round((WATER_GOAL - w) / 100) / 10) + "L";
+
+  // Droplets
+  let drops = "";
+  for (let i = 0; i < 12; i++) {
+    drops += `<div class="drop" style="opacity:${i < glasses ? 1 : 0.15};filter:${i < glasses ? "none" : "grayscale(1)"}">💧</div>`;
+  }
+  $("droplets").innerHTML = drops;
+
+  // Status badge
+  let badgeColor, badgeText;
+  if (p < 0.25)       { badgeColor = "#ff4444"; badgeText = "⚠ LOW — Drink up!"; }
+  else if (p < 0.6)   { badgeColor = "#ff9a3c"; badgeText = "◐ MODERATE — Keep going"; }
+  else if (p < 1)     { badgeColor = "#69ff47"; badgeText = "◕ GOOD — Almost there"; }
+  else                { badgeColor = "#00e5ff"; badgeText = "● GOAL MET — Well done!"; }
+  $("hydration-status").innerHTML = `<div class="status-badge" style="color:${badgeColor};border-color:${badgeColor}40;background:${badgeColor}15">${badgeText}</div>`;
+}
+
+function addWater(ml) {
+  today().water = Math.min(today().water + ml, 5000);
+  saveDay();
+  renderWater();
+}
+function resetWater() {
+  today().water = 0;
+  saveDay();
+  renderWater();
+}
+
+// ─── WORKOUT ──────────────────────────────────────────────────────────────────
+let activeWorkout = null;
+let expandedEx = null;
+
+function renderWorkoutList() {
+  $("wo-list-view").classList.remove("hidden");
+  $("wo-detail-view").classList.add("hidden");
+
+  // Workout cards
+  const container = $("wo-cards");
+  container.innerHTML = Object.entries(WORKOUTS).map(([key, w]) => {
+    const done = today().workout === key;
+    return `
+    <button class="wo-card" style="border-color:${done ? w.color : "#1a2535"}" onclick="openWorkout('${key}')">
+      <div class="wo-glow" style="background:linear-gradient(270deg,${w.color}10,transparent)"></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="wo-label" style="color:${w.color}">${w.label}</div>
+          <div class="wo-tag">${w.tag}</div>
+          <div class="wo-days">${w.days}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <span style="font-family:'Space Mono',monospace;font-size:10px;color:#4a6070">${w.exercises.length} EXERCISES</span>
+          ${done ? `<span class="wo-done-badge" style="background:${w.color}20;color:${w.color}">✓ DONE</span>` : ""}
+        </div>
+      </div>
+    </button>`;
+  }).join("");
+
+  // Schedule
+  const sched = [["MON","A"],["TUE",null],["WED","B"],["THU","A"],["FRI",null],["SAT","C"],["SUN",null]];
+  $("schedule").innerHTML = sched.map(([d, k]) => `
+    <div class="sched-row">
+      <span class="sched-day" style="color:${k ? "#c0d0e0" : "#2a4050"}">${d}</span>
+      <span class="sched-name" style="color:${k ? WORKOUTS[k].color : "#1a2535"}">${k ? `${WORKOUTS[k].label} — ${WORKOUTS[k].tag}` : "REST"}</span>
+    </div>`).join("");
+}
+
+function openWorkout(key) {
+  activeWorkout = key;
+  expandedEx = null;
+  $("wo-list-view").classList.add("hidden");
+  $("wo-detail-view").classList.remove("hidden");
+  renderWorkoutDetail();
+}
+
+function closeWorkout() {
+  activeWorkout = null;
+  expandedEx = null;
+  renderWorkoutList();
+}
+
+function renderWorkoutDetail() {
+  const w = WORKOUTS[activeWorkout];
+  const cs = today().completedSets || {};
+
+  // Count sets
+  const allSets = w.exercises.reduce((s, ex) => s + ex.sets, 0);
+  const doneSets = w.exercises.reduce((sum, ex, ei) => {
+    for (let si = 0; si < ex.sets; si++) { if (cs[`${activeWorkout}_${ei}_${si}`]) sum++; }
+    return sum;
+  }, 0);
+
+  $("wo-detail-title").textContent = w.label;
+  $("wo-detail-title").style.color = w.color;
+  $("wo-detail-progress").textContent = `${doneSets}/${allSets} SETS DONE`;
+  $("wo-prog-fill").style.width = pct(doneSets, allSets);
+  $("wo-prog-fill").style.background = w.color;
+  $("wo-complete-btn").textContent = "✓ MARK WORKOUT COMPLETE";
+  $("wo-complete-btn").style.color = w.color;
+  $("wo-complete-btn").style.borderColor = w.color;
+  $("wo-complete-btn").style.background = w.color + "18";
+
+  const exContainer = $("wo-exercises");
+  exContainer.innerHTML = w.exercises.map((ex, ei) => {
+    const allDone = ex.sets > 0 && Array.from({length: ex.sets}, (_, si) => cs[`${activeWorkout}_${ei}_${si}`]).every(Boolean);
+    const isOpen = expandedEx === ei;
+
+    const tiles = ex.sets > 0 ? `<div class="set-tiles">${
+      Array.from({length: ex.sets}, (_, si) => {
+        const d = !!cs[`${activeWorkout}_${ei}_${si}`];
+        return `<button class="set-tile${d ? " done" : ""}" style="border-color:${d ? w.color : "#1a2535"};${d ? `background:${w.color}25;color:${w.color}` : ""}"
+          onclick="toggleSet(${ei},${si})">${si + 1}</button>`;
+      }).join("")
+    }</div>` : "";
+
+    const cuesHtml = isOpen && ex.cues ? `
+      <div class="cues-box" style="border:1px solid ${w.color}25">
+        <div class="cues-title" style="color:${w.color}">COACHING CUES</div>
+        ${ex.cues.map((c, ci) => `<div class="cue-item"><span class="cue-num" style="color:${w.color}">${ci+1}.</span><span class="cue-text">${c}</span></div>`).join("")}
+      </div>` : "";
+
+    return `
+      <div class="ex-card" style="border-color:${allDone ? w.color + "50" : "#1a2535"}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <div style="flex:1">
+            <div class="ex-name" style="color:${allDone ? w.color : "#e0e8f0"}">${ex.name}</div>
+            <div class="ex-meta">${ex.sets} × ${ex.reps} · REST ${ex.rest}</div>
+            ${ex.note ? `<div class="ex-note">${ex.note}</div>` : ""}
+          </div>
+          ${allDone ? `<span style="color:${w.color};font-size:15px;margin-left:8px">✓</span>` : ""}
+        </div>
+        ${tiles}
+        <div class="ex-actions">
+          <button class="btn-cue" style="background:${isOpen ? w.color+"18":"#0d1520"};border:1px solid ${isOpen ? w.color+"60":"#1a2535"};color:${isOpen ? w.color:"#4a6070"}"
+            onclick="toggleCues(${ei})">${isOpen ? "▲ HIDE CUES" : "▼ FORM CUES"}</button>
+          <a href="${ex.yt}" target="_blank" rel="noopener noreferrer" class="btn-yt" style="flex:1">▶ WATCH ON YT</a>
+        </div>
+        ${cuesHtml}
+      </div>`;
+  }).join("");
+}
+
+function toggleSet(ei, si) {
+  const key = `${activeWorkout}_${ei}_${si}`;
+  if (!today().completedSets) today().completedSets = {};
+  today().completedSets[key] = !today().completedSets[key];
+  saveDay();
+  renderWorkoutDetail();
+}
+
+function toggleCues(ei) {
+  expandedEx = expandedEx === ei ? null : ei;
+  renderWorkoutDetail();
+}
+
+function markWorkoutComplete() {
+  today().workout = activeWorkout;
+  saveDay();
+  closeWorkout();
+  renderWorkoutList();
+}
+
+// ─── WEIGHT ───────────────────────────────────────────────────────────────────
+function renderWeight() {
+  const lastWt = weights.length ? weights[weights.length - 1].kg : 82;
+  const firstWt = weights.length ? weights[0].kg : 82;
+  const change = +(lastWt - firstWt).toFixed(1);
+  const toGo = +(lastWt - WEIGHT_TARGET).toFixed(1);
+
+  $("wt-current").textContent = lastWt + "kg";
+  $("wt-change").textContent = (change > 0 ? "+" : "") + change + "kg";
+  $("wt-change").style.color = change <= 0 ? "#69ff47" : "#ff4444";
+  $("wt-change-bar").style.background = change <= 0 ? "#69ff47" : "#ff4444";
+  $("wt-togo").textContent = toGo + "kg";
+
+  // History
+  const hist = $("wt-history");
+  if (!weights.length) {
+    hist.innerHTML = `<div style="color:#2a4050;font-size:12px;font-family:'Space Mono',monospace">No weigh-ins logged yet.</div>`;
+  } else {
+    hist.innerHTML = [...weights].reverse().map(w => `
+      <div class="wt-entry">
+        <div>
+          <span style="font-family:'Space Mono',monospace;font-size:13px;color:#ff9a3c;font-weight:700">${w.kg}kg</span>
+          ${w.note ? `<span style="font-size:11px;color:#4a6070;margin-left:8px">${w.note}</span>` : ""}
+        </div>
+        <span style="font-family:'Space Mono',monospace;font-size:10px;color:#3a5060">${w.date}</span>
+      </div>`).join("");
+  }
+
+  // Chart
+  if (weights.length > 1) {
+    $("wt-chart-card").style.display = "block";
+    renderWeightChart();
+  } else {
+    $("wt-chart-card").style.display = "none";
+  }
+}
+
+function renderWeightChart() {
+  const vals = weights.map(w => w.kg);
+  const min = Math.min(...vals) - 1, max = Math.max(...vals) + 1;
+  const W = 300, H = 80;
+  const pts = vals.map((v, i) => {
+    const x = vals.length === 1 ? W/2 : (i / (vals.length - 1)) * W;
+    const y = H - ((v - min) / (max - min)) * H;
+    return `${x},${y}`;
+  }).join(" ");
+  const circles = vals.map((v, i) => {
+    const x = vals.length === 1 ? W/2 : (i / (vals.length - 1)) * W;
+    const y = H - ((v - min) / (max - min)) * H;
+    return `<circle cx="${x}" cy="${y}" r="3" fill="#ff9a3c"/>`;
+  }).join("");
+  $("wt-chart").setAttribute("viewBox", `0 0 ${W} ${H}`);
+  $("wt-chart").innerHTML = `
+    <polyline points="${pts}" fill="none" stroke="#ff9a3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    ${circles}`;
+}
+
+function logWeight() {
+  const kg = parseFloat($("wt-kg").value);
+  const note = $("wt-note").value.trim();
+  if (isNaN(kg)) return;
+  weights.push({ kg, note, date: new Date().toLocaleDateString("en-AU"), ts: Date.now() });
+  saveState("flt_weights", weights);
+  $("wt-kg").value = ""; $("wt-note").value = "";
+  renderWeight();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderDashboard();
+buildQuickFoods();
+</script>
+</body>
+</html>
