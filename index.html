@@ -276,17 +276,24 @@
       </div>
 
       <div class="card">
-        <div class="card-title">LOG FOOD</div>
-        <input type="text" id="food-name" placeholder="Food name..." style="margin-bottom:8px">
-        <div class="grid-2" style="gap:8px;margin-bottom:8px">
-          <input type="number" id="food-cal" placeholder="Calories">
-          <input type="number" id="food-pro" placeholder="Protein (g)">
+        <div class="card-title">SEARCH FOOD DATABASE</div>
+        <div style="position:relative">
+          <input type="text" id="food-search" placeholder="Search 500+ foods... (e.g. chicken, weet-bix)" oninput="searchFoods()" autocomplete="off" style="margin-bottom:0;padding-right:36px">
+          <button onclick="clearSearch()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#4a6070;font-size:16px;cursor:pointer;padding:0">✕</button>
         </div>
-        <div class="btn-row">
-          <button class="btn btn-cyan" onclick="addFood()">+ ADD</button>
-          <button class="btn btn-ghost" onclick="toggleQuick()">QUICK ADD ▾</button>
+        <div id="food-search-results" style="margin-top:6px;display:flex;flex-direction:column;gap:3px;max-height:280px;overflow-y:auto"></div>
+        <div id="food-search-hint" style="margin-top:8px;font-size:11px;color:#2a4050;font-family:'Space Mono',monospace;text-align:center">TYPE TO SEARCH · TAP TO LOG</div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="cursor:pointer;margin-bottom:0" onclick="toggleCustom()">+ CUSTOM FOOD <span id="custom-toggle-icon" style="float:right;color:#4a6070">▾</span></div>
+        <div id="custom-food-form" class="hidden" style="margin-top:12px">
+          <input type="text" id="food-name" placeholder="Food name..." style="margin-bottom:8px">
+          <div class="grid-2" style="gap:8px;margin-bottom:8px">
+            <input type="number" id="food-cal" placeholder="Calories">
+            <input type="number" id="food-pro" placeholder="Protein (g)">
+          </div>
+          <button class="btn btn-cyan" onclick="addFood()">+ ADD CUSTOM</button>
         </div>
-        <div id="quick-foods" class="hidden" style="margin-top:10px;display:flex;flex-direction:column;gap:4px"></div>
       </div>
 
       <div class="card">
@@ -516,18 +523,478 @@ const WORKOUTS = {
   }
 };
 
-const COMMON_FOODS = [
-  { name: "Chicken Breast 100g", cal: 165, protein: 31 },
-  { name: "Greek Yoghurt 170g", cal: 100, protein: 17 },
-  { name: "Eggs x2", cal: 140, protein: 12 },
-  { name: "Oats 80g", cal: 297, protein: 10 },
-  { name: "Protein Shake", cal: 130, protein: 25 },
-  { name: "Banana", cal: 89, protein: 1 },
-  { name: "Brown Rice 180g cooked", cal: 220, protein: 5 },
-  { name: "Tuna Can 95g", cal: 90, protein: 20 },
-  { name: "Almonds 30g", cal: 174, protein: 6 },
-  { name: "Broccoli 150g", cal: 51, protein: 4 },
-];
+// ─── FOOD DATABASE (500+ items) ───────────────────────────────────────────────
+// Format: [name, calories, protein_g, serving_description]
+const FOOD_DB = [
+  // ── CHICKEN & POULTRY ──
+  ["Chicken Breast, grilled (150g)", 248, 46, "150g fillet"],
+  ["Chicken Breast, raw (100g)", 165, 31, "100g"],
+  ["Chicken Thigh, skinless grilled (120g)", 196, 28, "1 thigh"],
+  ["Chicken Thigh, skin-on (120g)", 252, 26, "1 thigh"],
+  ["Chicken Drumstick, grilled (100g)", 172, 24, "1 drumstick"],
+  ["Chicken Wing (60g)", 120, 11, "1 wing"],
+  ["Chicken Mince, cooked (100g)", 185, 27, "100g"],
+  ["Rotisserie Chicken, breast (150g)", 248, 44, "150g"],
+  ["Rotisserie Chicken, thigh (120g)", 220, 24, "120g"],
+  ["Turkey Breast, sliced (80g)", 89, 18, "2 slices"],
+  ["Turkey Mince, cooked (100g)", 170, 29, "100g"],
+  ["Duck Breast, cooked (100g)", 201, 24, "100g"],
+
+  // ── BEEF ──
+  ["Beef Mince, lean cooked (100g)", 215, 26, "100g"],
+  ["Beef Mince, regular cooked (100g)", 254, 24, "100g"],
+  ["Beef Steak, lean grilled (150g)", 258, 39, "150g"],
+  ["Beef Steak, scotch fillet (200g)", 400, 44, "200g"],
+  ["Beef Steak, eye fillet (180g)", 324, 43, "180g"],
+  ["Beef Steak, T-bone (250g)", 500, 52, "250g"],
+  ["Beef Stir-fry strips, cooked (100g)", 185, 26, "100g"],
+  ["Beef Sausage, cooked (75g)", 220, 11, "1 sausage"],
+  ["BBQ Beef Sausage (80g)", 240, 12, "1 thick sausage"],
+  ["Corned Beef (80g)", 170, 19, "80g"],
+  ["Beef Jerky (30g)", 82, 14, "small bag"],
+  ["Rump Steak, grilled (180g)", 306, 43, "180g"],
+
+  // ── LAMB & PORK ──
+  ["Lamb Chop, grilled (130g)", 280, 28, "1 chop"],
+  ["Lamb Cutlet, grilled (80g)", 192, 19, "2 cutlets"],
+  ["Lamb Mince, cooked (100g)", 235, 24, "100g"],
+  ["Lamb Leg, roasted (150g)", 315, 36, "150g"],
+  ["Pork Chop, grilled (130g)", 248, 31, "1 chop"],
+  ["Pork Fillet, grilled (150g)", 225, 36, "150g"],
+  ["Pork Mince, cooked (100g)", 230, 26, "100g"],
+  ["Bacon, middle rasher cooked (20g)", 70, 5, "1 rasher"],
+  ["Bacon, short cut (25g)", 85, 7, "1 rasher"],
+  ["Ham, sliced (40g)", 52, 8, "2 slices"],
+  ["Leg Ham, sliced (40g)", 56, 9, "2 slices"],
+  ["Prosciutto (30g)", 90, 9, "3 slices"],
+  ["Salami (30g)", 120, 7, "4 slices"],
+  ["Chorizo, cooked (60g)", 220, 11, "½ chorizo"],
+
+  // ── SEAFOOD ──
+  ["Tuna, canned in springwater (95g)", 90, 20, "1 can drained"],
+  ["Tuna, canned in oil (95g)", 165, 22, "1 can drained"],
+  ["Tuna, fresh steak grilled (150g)", 225, 40, "150g"],
+  ["Salmon, fillet grilled (150g)", 312, 35, "150g"],
+  ["Salmon, smoked (80g)", 147, 17, "80g"],
+  ["Salmon, canned (95g)", 155, 22, "1 can"],
+  ["Sardines, canned (100g)", 208, 25, "1 can"],
+  ["Prawns, cooked (100g)", 99, 21, "100g"],
+  ["Barramundi, grilled (150g)", 180, 34, "150g"],
+  ["Flathead, grilled (150g)", 168, 33, "150g"],
+  ["Whiting, grilled (150g)", 162, 32, "150g"],
+  ["Basa Fillet, cooked (150g)", 174, 30, "150g"],
+  ["Squid / Calamari, grilled (100g)", 92, 16, "100g"],
+  ["Mussels, cooked (100g)", 172, 24, "100g"],
+  ["Oysters (6 medium)", 60, 8, "6 oysters"],
+  ["Scallops, cooked (100g)", 111, 21, "100g"],
+  ["Fish Fingers, baked (3 pieces)", 190, 12, "3 fingers"],
+  ["Tinned Mackerel (100g)", 189, 19, "100g"],
+
+  // ── EGGS & DAIRY ──
+  ["Eggs, whole scrambled (2 eggs)", 180, 12, "2 eggs + splash milk"],
+  ["Eggs, whole fried (2 eggs)", 200, 12, "2 eggs in oil"],
+  ["Eggs, boiled (2 eggs)", 156, 12, "2 large eggs"],
+  ["Eggs, poached (2 eggs)", 144, 12, "2 large eggs"],
+  ["Egg Whites (3 whites)", 52, 11, "3 whites"],
+  ["Milk, full cream (250ml)", 165, 9, "1 cup"],
+  ["Milk, skim (250ml)", 88, 9, "1 cup"],
+  ["Milk, reduced fat (250ml)", 120, 9, "1 cup"],
+  ["Milk, almond unsweetened (250ml)", 39, 1, "1 cup"],
+  ["Milk, oat (250ml)", 120, 3, "1 cup"],
+  ["Milk, soy unsweetened (250ml)", 80, 7, "1 cup"],
+  ["Greek Yoghurt, plain full fat (170g)", 170, 17, "small tub"],
+  ["Greek Yoghurt, plain low fat (170g)", 100, 17, "small tub"],
+  ["Greek Yoghurt, Chobani plain (170g)", 100, 17, "1 tub"],
+  ["Greek Yoghurt, Chobani flavoured (170g)", 140, 12, "1 tub"],
+  ["Yoghurt, regular flavoured (200g)", 180, 6, "1 tub"],
+  ["Cottage Cheese (100g)", 98, 11, "100g"],
+  ["Ricotta (100g)", 174, 10, "100g"],
+  ["Cream Cheese (30g)", 100, 2, "2 tbsp"],
+  ["Cheddar Cheese (30g)", 124, 8, "1 slice / small serve"],
+  ["Tasty Cheese, sliced (20g)", 82, 5, "1 slice"],
+  ["Mozzarella (50g)", 149, 10, "50g"],
+  ["Feta (30g)", 79, 4, "30g crumbled"],
+  ["Parmesan, grated (15g)", 62, 5, "1 tbsp"],
+  ["Butter (10g)", 72, 0, "1 tsp spread"],
+  ["Cream, thickened (30ml)", 120, 0, "2 tbsp"],
+  ["Sour Cream (30g)", 60, 1, "2 tbsp"],
+
+  // ── PROTEIN SUPPLEMENTS ──
+  ["Protein Shake, whey (1 scoop 30g)", 120, 24, "1 scoop in water"],
+  ["Protein Shake, whey + milk (300ml)", 280, 33, "1 scoop + 250ml milk"],
+  ["Protein Bar, Quest (60g)", 190, 21, "1 bar"],
+  ["Protein Bar, Musashi (65g)", 220, 20, "1 bar"],
+  ["Protein Bar, Aussie Bodies (60g)", 185, 15, "1 bar"],
+  ["Protein Bar, generic (50g)", 195, 20, "1 bar"],
+  ["Protein Yoghurt, YoPRO (160g)", 96, 15, "1 tub"],
+  ["Protein Milk, Nippy's (600ml)", 210, 39, "1 bottle"],
+
+  // ── BREAD & BAKERY ──
+  ["White Bread, slice (35g)", 85, 3, "1 slice"],
+  ["Wholemeal Bread, slice (38g)", 88, 4, "1 slice"],
+  ["Multigrain Bread, slice (38g)", 90, 4, "1 slice"],
+  ["Sourdough Bread, slice (50g)", 120, 5, "1 thick slice"],
+  ["Rye Bread, slice (32g)", 78, 3, "1 slice"],
+  ["White Bread Roll (65g)", 165, 5, "1 roll"],
+  ["Wholemeal Roll (70g)", 170, 7, "1 roll"],
+  ["Turkish Bread, piece (80g)", 200, 7, "1 piece"],
+  ["Pita Bread, white (60g)", 160, 5, "1 round"],
+  ["Pita Bread, wholemeal (60g)", 155, 6, "1 round"],
+  ["Wrap, white flour (40g)", 120, 3, "1 wrap"],
+  ["Wrap, wholemeal (40g)", 115, 4, "1 wrap"],
+  ["Bagel, plain (90g)", 245, 9, "1 bagel"],
+  ["English Muffin (57g)", 134, 5, "1 muffin"],
+  ["Crumpet (65g)", 140, 4, "1 crumpet"],
+  ["Croissant (57g)", 231, 5, "1 croissant"],
+  ["Banana Bread, slice (80g)", 250, 4, "1 slice"],
+  ["Fruit Loaf, slice (35g)", 100, 3, "1 slice"],
+  ["Corn Thin (6g)", 21, 0, "1 thin"],
+  ["Rice Cake (9g)", 36, 1, "1 cake"],
+  ["Vita-Weat (8g)", 28, 1, "1 cracker"],
+  ["Ryvita (10g)", 34, 1, "1 cracker"],
+  ["Cracker, SAO (8g)", 35, 1, "1 cracker"],
+  ["Cracker, Jatz (8g)", 38, 1, "1 cracker"],
+
+  // ── AUSSIE SUPERMARKET STAPLES ──
+  ["Weet-Bix (2 biscuits, 30g)", 104, 3, "2 biscuits"],
+  ["Weet-Bix + full cream milk (300ml)", 269, 12, "2 biscuits + milk"],
+  ["Sanitarium Lite-Bix (2 biscuits)", 100, 3, "2 biscuits"],
+  ["Up & Go Energize (250ml)", 221, 9, "1 carton"],
+  ["Up & Go Original (250ml)", 185, 7, "1 carton"],
+  ["Weet-Bix Bites (30g)", 118, 2, "30g handful"],
+  ["Corn Flakes (30g + 125ml milk)", 185, 7, "1 bowl"],
+  ["Nutri-Grain (30g)", 112, 4, "30g bowl"],
+  ["Milo (3 tsp in 200ml milk)", 240, 8, "1 mug"],
+  ["Milo cereal (30g)", 115, 3, "30g"],
+  ["Vegemite on toast (2 slices)", 195, 8, "2 slices w Vegemite"],
+  ["Peanut Butter, Bega (20g)", 120, 5, "2 tsp"],
+  ["Peanut Butter, Sanitarium (20g)", 118, 5, "2 tsp"],
+  ["Vegemite (10g)", 28, 3, "1 tbsp"],
+  ["Honey (20g)", 58, 0, "1 tbsp"],
+  ["Jam, strawberry (20g)", 48, 0, "1 tbsp"],
+  ["Nutella (20g)", 110, 1, "1 tbsp"],
+  ["Two-minute Noodles, Maggi (85g)", 388, 8, "1 pack cooked"],
+  ["Weis Bar, mango (75g)", 170, 2, "1 bar"],
+  ["Peters Drumstick (88g)", 220, 4, "1 cone"],
+  ["Connoisseur Ice Cream (125ml)", 290, 4, "1 tub"],
+  ["Streets Paddle Pop (75g)", 155, 2, "1 bar"],
+  ["Tim Tam (18g)", 88, 1, "1 biscuit"],
+  ["Tim Tam (2 biscuits, 36g)", 176, 2, "2 biscuits"],
+  ["Shapes, BBQ (25g)", 120, 2, "small handful"],
+  ["Grain Waves (25g)", 115, 2, "small serve"],
+  ["CC's Corn Chips (25g)", 126, 2, "small serve"],
+  ["Smiths Chips (25g)", 135, 2, "small bag"],
+  ["Smiths Chips, Original (45g)", 243, 3, "1 large bag"],
+  ["Freddo Frog (15g)", 80, 1, "1 frog"],
+  ["Caramello Koala (20g)", 100, 1, "1 koala"],
+  ["Cherry Ripe (52g)", 225, 2, "1 bar"],
+  ["Kit Kat (45g)", 230, 3, "1 bar"],
+  ["Snickers (52g)", 250, 4, "1 bar"],
+  ["Muesli Bar, Uncle Tobys (31g)", 130, 2, "1 bar"],
+  ["Muesli Bar, Carmans (45g)", 200, 5, "1 bar"],
+  ["Yoghurt Muesli Bar (35g)", 148, 2, "1 bar"],
+
+  // ── CEREALS & OATS ──
+  ["Oats, rolled dry (80g)", 296, 10, "1 cup dry"],
+  ["Oats, rolled cooked (200g)", 135, 5, "1 bowl cooked"],
+  ["Oats, instant Quaker (40g packet)", 148, 4, "1 sachet"],
+  ["Bircher Muesli (200g)", 310, 8, "1 bowl"],
+  ["Muesli, toasted (45g)", 200, 5, "45g serve"],
+  ["Granola (45g)", 210, 5, "45g serve"],
+  ["Weetabix (2 biscuits)", 120, 4, "2 biscuits"],
+  ["All-Bran (30g)", 85, 4, "30g"],
+  ["Special K (30g)", 110, 5, "30g"],
+
+  // ── RICE, PASTA & GRAINS ──
+  ["White Rice, cooked (180g)", 232, 4, "1 cup cooked"],
+  ["Brown Rice, cooked (180g)", 218, 5, "1 cup cooked"],
+  ["Basmati Rice, cooked (180g)", 224, 5, "1 cup cooked"],
+  ["Jasmine Rice, cooked (180g)", 236, 4, "1 cup cooked"],
+  ["Fried Rice, homemade (200g)", 320, 8, "1 cup"],
+  ["Spaghetti, cooked (180g)", 264, 9, "1 cup cooked"],
+  ["Fettuccine, cooked (180g)", 264, 9, "1 cup cooked"],
+  ["Penne, cooked (180g)", 264, 9, "1 cup cooked"],
+  ["Pasta, with bolognese (350g)", 580, 30, "1 bowl"],
+  ["Pasta, with tomato sauce (300g)", 400, 12, "1 bowl"],
+  ["Udon Noodles, cooked (200g)", 210, 7, "1 serve"],
+  ["Rice Noodles, cooked (200g)", 192, 3, "1 serve"],
+  ["Egg Noodles, cooked (180g)", 264, 8, "1 serve"],
+  ["Quinoa, cooked (185g)", 222, 8, "1 cup cooked"],
+  ["Couscous, cooked (157g)", 176, 6, "1 cup cooked"],
+  ["Polenta, cooked (240g)", 145, 3, "1 cup"],
+  ["Lentils, cooked (198g)", 230, 18, "1 cup cooked"],
+  ["Chickpeas, cooked (164g)", 269, 15, "1 cup cooked"],
+  ["Black Beans, cooked (172g)", 227, 15, "1 cup cooked"],
+  ["Kidney Beans, cooked (177g)", 225, 15, "1 cup cooked"],
+  ["Baked Beans, Heinz (220g)", 186, 10, "½ large can"],
+  ["Baked Beans on Toast (2 slices)", 360, 18, "standard serve"],
+
+  // ── VEGETABLES ──
+  ["Broccoli, steamed (150g)", 51, 4, "1 cup florets"],
+  ["Cauliflower, steamed (150g)", 38, 3, "1 cup"],
+  ["Spinach, raw (30g)", 7, 1, "1 handful"],
+  ["Spinach, cooked (90g)", 20, 3, "½ cup cooked"],
+  ["Mixed Salad Leaves (60g)", 10, 1, "1 bowl"],
+  ["Lettuce, iceberg (60g)", 8, 1, "1 cup"],
+  ["Tomato, medium (120g)", 22, 1, "1 tomato"],
+  ["Cherry Tomatoes (120g)", 22, 1, "10 tomatoes"],
+  ["Cucumber (100g)", 15, 1, "½ cucumber"],
+  ["Carrot, medium (80g)", 33, 1, "1 carrot"],
+  ["Capsicum, red (90g)", 27, 1, "½ capsicum"],
+  ["Capsicum, green (90g)", 18, 1, "½ capsicum"],
+  ["Zucchini (100g)", 17, 1, "1 small"],
+  ["Mushrooms, button (80g)", 18, 2, "4-5 mushrooms"],
+  ["Mushrooms, stir-fried (80g)", 40, 2, "4-5 mushrooms"],
+  ["Onion, medium (110g)", 44, 1, "1 onion"],
+  ["Spring Onion (15g)", 5, 0, "2 stalks"],
+  ["Celery (40g)", 6, 0, "1 stalk"],
+  ["Corn on the cob (90g)", 85, 3, "1 cob"],
+  ["Corn kernels, canned (80g)", 66, 2, "½ cup"],
+  ["Peas, frozen cooked (80g)", 56, 4, "½ cup"],
+  ["Green Beans, steamed (90g)", 28, 2, "1 cup"],
+  ["Asparagus (80g)", 18, 2, "4 spears"],
+  ["Sweet Potato, baked (150g)", 129, 3, "1 medium"],
+  ["Sweet Potato, mashed (150g)", 150, 3, "150g"],
+  ["Potato, baked (180g)", 157, 4, "1 medium"],
+  ["Potato, boiled (150g)", 116, 3, "1 medium"],
+  ["Potato, mashed w butter (200g)", 220, 4, "1 cup"],
+  ["Chips, homemade oven (150g)", 243, 4, "1 serve"],
+  ["Pumpkin, roasted (150g)", 75, 2, "150g"],
+  ["Eggplant, grilled (100g)", 28, 1, "100g"],
+  ["Avocado, half (70g)", 112, 1, "½ avocado"],
+  ["Avocado, whole (140g)", 224, 2, "1 whole"],
+  ["Beetroot, canned (80g)", 50, 1, "2-3 slices"],
+  ["Baby Spinach, bag (100g)", 23, 3, "full bag"],
+  ["Kale, raw (60g)", 29, 2, "1 cup"],
+
+  // ── FRUIT ──
+  ["Banana, medium (118g)", 105, 1, "1 banana"],
+  ["Apple, medium (182g)", 95, 0, "1 apple"],
+  ["Orange, medium (131g)", 62, 1, "1 orange"],
+  ["Mandarin (88g)", 47, 1, "1 mandarin"],
+  ["Grapes (150g)", 104, 1, "1 cup"],
+  ["Strawberries (150g)", 48, 1, "1 cup"],
+  ["Blueberries (150g)", 86, 1, "1 cup"],
+  ["Watermelon (280g)", 84, 2, "2 cups diced"],
+  ["Mango (200g)", 134, 1, "1 mango"],
+  ["Pineapple (165g)", 82, 1, "1 cup chunks"],
+  ["Rockmelon (150g)", 54, 1, "1 cup"],
+  ["Kiwifruit (76g)", 46, 1, "1 kiwi"],
+  ["Pear, medium (178g)", 101, 1, "1 pear"],
+  ["Peach (150g)", 59, 1, "1 peach"],
+  ["Nectarine (142g)", 62, 1, "1 nectarine"],
+  ["Plum (66g)", 30, 0, "1 plum"],
+  ["Cherries (140g)", 87, 1, "1 cup"],
+  ["Lemon juice (30ml)", 8, 0, "2 tbsp"],
+  ["Lime juice (30ml)", 8, 0, "2 tbsp"],
+  ["Dates, medjool (24g)", 66, 0, "1 date"],
+  ["Raisins (40g)", 120, 1, "small handful"],
+
+  // ── NUTS & SEEDS ──
+  ["Almonds (30g)", 173, 6, "small handful ~23 nuts"],
+  ["Cashews (30g)", 163, 4, "small handful"],
+  ["Walnuts (30g)", 196, 5, "small handful"],
+  ["Macadamia (30g)", 204, 2, "small handful"],
+  ["Peanuts (30g)", 170, 8, "small handful"],
+  ["Pistachios (30g)", 159, 6, "small handful"],
+  ["Mixed Nuts (30g)", 175, 5, "small handful"],
+  ["Pumpkin Seeds (30g)", 163, 8, "2 tbsp"],
+  ["Sunflower Seeds (30g)", 175, 6, "2 tbsp"],
+  ["Chia Seeds (15g)", 68, 2, "1 tbsp"],
+  ["Flaxseeds (15g)", 79, 3, "1 tbsp"],
+  ["Sesame Seeds (15g)", 86, 3, "1 tbsp"],
+  ["Tahini (20g)", 118, 4, "1 tbsp"],
+  ["Natural Peanut Butter (32g)", 190, 8, "2 tbsp"],
+  ["Almond Butter (32g)", 196, 6, "2 tbsp"],
+
+  // ── FATS & OILS ──
+  ["Olive Oil (10ml)", 83, 0, "1 tbsp"],
+  ["Coconut Oil (10ml)", 83, 0, "1 tbsp"],
+  ["Avocado Oil (10ml)", 83, 0, "1 tbsp"],
+  ["Mayonnaise (15g)", 100, 0, "1 tbsp"],
+  ["Aioli (15g)", 95, 0, "1 tbsp"],
+
+  // ── SAUCES & CONDIMENTS ──
+  ["Tomato Sauce / Ketchup (20g)", 20, 0, "1 tbsp"],
+  ["BBQ Sauce (20g)", 28, 0, "1 tbsp"],
+  ["Soy Sauce (15ml)", 9, 1, "1 tbsp"],
+  ["Sweet Chilli Sauce (20g)", 40, 0, "1 tbsp"],
+  ["Hot Sauce, Tabasco (5ml)", 1, 0, "1 tsp"],
+  ["Mustard (10g)", 10, 1, "1 tsp"],
+  ["Worcestershire Sauce (10ml)", 11, 0, "1 tbsp"],
+  ["Hoisin Sauce (20g)", 50, 1, "1 tbsp"],
+  ["Oyster Sauce (20g)", 22, 0, "1 tbsp"],
+  ["Pasta Sauce, jar (125g)", 85, 3, "½ cup"],
+  ["Hummus (50g)", 118, 4, "2 tbsp"],
+  ["Tzatziki (50g)", 55, 3, "2 tbsp"],
+  ["Salsa (50g)", 18, 1, "2 tbsp"],
+  ["Gravy (60ml)", 30, 1, "¼ cup"],
+  ["Stock, chicken (250ml)", 15, 2, "1 cup"],
+
+  // ── DRINKS ──
+  ["Water (500ml)", 0, 0, "1 bottle"],
+  ["Coffee, black (250ml)", 5, 0, "1 cup"],
+  ["Coffee, flat white (240ml)", 120, 7, "standard cafe"],
+  ["Coffee, latte (300ml)", 150, 9, "standard cafe"],
+  ["Coffee, cappuccino (240ml)", 120, 7, "standard cafe"],
+  ["Coffee, long black (240ml)", 8, 0, "standard cafe"],
+  ["Coffee, skim flat white (240ml)", 80, 8, "standard cafe"],
+  ["Tea, with milk (250ml)", 30, 2, "1 cup"],
+  ["Orange Juice, fresh (250ml)", 112, 2, "1 glass"],
+  ["Apple Juice (250ml)", 115, 0, "1 glass"],
+  ["Coca-Cola (375ml)", 158, 0, "1 can"],
+  ["Coca-Cola Zero (375ml)", 2, 0, "1 can"],
+  ["Pepsi (375ml)", 158, 0, "1 can"],
+  ["Sprite (375ml)", 150, 0, "1 can"],
+  ["Lemonade (375ml)", 143, 0, "1 can"],
+  ["Gatorade (600ml)", 144, 0, "1 bottle"],
+  ["Powerade (600ml)", 138, 0, "1 bottle"],
+  ["Red Bull (250ml)", 113, 1, "1 can"],
+  ["Monster Energy (500ml)", 225, 0, "1 can"],
+  ["Beer, mid-strength (375ml)", 125, 1, "1 stubby"],
+  ["Beer, full-strength (375ml)", 163, 1, "1 stubby"],
+  ["Beer, light (375ml)", 88, 1, "1 stubby"],
+  ["Wine, red (150ml)", 128, 0, "1 glass"],
+  ["Wine, white (150ml)", 121, 0, "1 glass"],
+  ["Champagne / Prosecco (150ml)", 111, 0, "1 glass"],
+  ["Spirits, standard (30ml)", 65, 0, "1 nip"],
+  ["Vodka Soda (can 375ml)", 100, 0, "1 can"],
+  ["Kombucha (330ml)", 40, 0, "1 bottle"],
+  ["Coconut Water (330ml)", 60, 1, "1 small carton"],
+  ["Protein Shake ready-to-drink (500ml)", 210, 40, "1 bottle"],
+
+  // ── SNACKS ──
+  ["Popcorn, air-popped (30g)", 110, 3, "1 cup popped"],
+  ["Dark Chocolate 70%+ (20g)", 110, 1, "2 squares"],
+  ["Milk Chocolate (20g)", 104, 2, "2 squares"],
+  ["Muesli Bar, Uncle Tobys Oats (31g)", 130, 2, "1 bar"],
+  ["Bliss Ball, homemade (40g)", 165, 4, "1 ball"],
+  ["Rice Paper Roll, 1 veg (80g)", 90, 3, "1 roll"],
+  ["Rice Paper Roll, 1 prawn (90g)", 100, 6, "1 roll"],
+  ["Sushi, salmon roll (6 pieces)", 280, 12, "1 roll"],
+  ["Sushi, California roll (6 pieces)", 250, 7, "1 roll"],
+
+  // ── MACCAS / McDONALD'S ──
+  ["McDonalds Big Mac", 508, 25, "1 burger"],
+  ["McDonalds Quarter Pounder", 510, 30, "1 burger"],
+  ["McDonalds McChicken", 394, 21, "1 burger"],
+  ["McDonalds Filet-O-Fish", 378, 16, "1 burger"],
+  ["McDonalds Cheeseburger", 297, 15, "1 burger"],
+  ["McDonalds Double Cheeseburger", 437, 25, "1 burger"],
+  ["McDonalds 6 Chicken McNuggets", 259, 16, "6 pack"],
+  ["McDonalds 10 Chicken McNuggets", 432, 27, "10 pack"],
+  ["McDonalds Small Fries", 230, 3, "small serve"],
+  ["McDonalds Medium Fries", 320, 4, "medium serve"],
+  ["McDonalds Large Fries", 444, 6, "large serve"],
+  ["McDonalds Hash Brown", 150, 2, "1 hash brown"],
+  ["McDonalds Egg McMuffin", 300, 17, "1 muffin"],
+  ["McDonalds Sausage McMuffin w Egg", 430, 21, "1 muffin"],
+  ["McDonalds Big Breakfast", 720, 34, "full serve"],
+  ["McDonalds McFlurry Oreo", 340, 9, "regular"],
+  ["McDonalds Soft Serve Cone", 170, 4, "1 cone"],
+  ["McDonalds Chocolate Sundae", 338, 7, "1 sundae"],
+  ["McDonalds Large Cola", 310, 0, "large cup"],
+
+  // ── KFC ──
+  ["KFC Original Piece, breast", 330, 35, "1 breast"],
+  ["KFC Original Piece, thigh", 330, 20, "1 thigh"],
+  ["KFC Original Piece, drumstick", 150, 13, "1 drumstick"],
+  ["KFC Original Piece, wing", 140, 9, "1 wing"],
+  ["KFC Zinger Burger", 540, 28, "1 burger"],
+  ["KFC Zinger Tower Burger", 700, 35, "1 burger"],
+  ["KFC Original Recipe Burger", 420, 25, "1 burger"],
+  ["KFC 3 Wicked Wings", 380, 23, "3 wings"],
+  ["KFC Popcorn Chicken, regular", 300, 18, "regular serve"],
+  ["KFC Chips, regular", 340, 5, "regular serve"],
+  ["KFC Chips, large", 490, 7, "large serve"],
+  ["KFC Coleslaw", 130, 1, "regular serve"],
+  ["KFC Potato & Gravy", 130, 2, "regular serve"],
+
+  // ── HUNGRY JACK'S / BURGER KING ──
+  ["Hungry Jacks Whopper", 653, 33, "1 burger"],
+  ["Hungry Jacks Whopper Jr", 392, 18, "1 burger"],
+  ["Hungry Jacks Double Whopper", 889, 53, "1 burger"],
+  ["Hungry Jacks Cheeseburger", 297, 16, "1 burger"],
+  ["Hungry Jacks Chicken Royale", 540, 25, "1 burger"],
+  ["Hungry Jacks Bacon & Egg Muffin", 340, 18, "1 muffin"],
+  ["Hungry Jacks Small Chips", 250, 3, "small"],
+  ["Hungry Jacks Medium Chips", 380, 5, "medium"],
+  ["Hungry Jacks Large Chips", 510, 6, "large"],
+  ["Hungry Jacks Onion Rings", 360, 5, "regular serve"],
+
+  // ── SUBWAY ──
+  ["Subway 6-inch Italian BMT", 450, 23, "6 inch"],
+  ["Subway 6-inch Turkey Breast", 280, 18, "6 inch"],
+  ["Subway 6-inch Chicken Teriyaki", 350, 24, "6 inch"],
+  ["Subway 6-inch Tuna", 430, 21, "6 inch"],
+  ["Subway 6-inch Veggie Delite", 230, 9, "6 inch"],
+  ["Subway 6-inch Meatball Marinara", 480, 24, "6 inch"],
+  ["Subway Footlong Turkey Breast", 560, 36, "footlong"],
+  ["Subway Footlong Chicken Teriyaki", 700, 48, "footlong"],
+  ["Subway Cookies (1)", 210, 2, "1 cookie"],
+
+  // ── DOMINO'S / PIZZA ──
+  ["Dominos Pizza, Margherita slice", 220, 9, "1 slice"],
+  ["Dominos Pizza, Pepperoni slice", 260, 11, "1 slice"],
+  ["Dominos Pizza, Beef & Onion slice", 250, 13, "1 slice"],
+  ["Dominos Pizza, Chicken Mango slice", 240, 12, "1 slice"],
+  ["Dominos Garlic Bread (2 pieces)", 200, 5, "2 pieces"],
+  ["Pizza Hut, Supreme slice", 285, 14, "1 slice"],
+  ["Homemade Pizza, slice (120g)", 250, 12, "1 slice"],
+
+  // ── NOODLES & ASIAN ──
+  ["Pad Thai, restaurant (350g)", 620, 22, "1 serve"],
+  ["Fried Rice, restaurant (350g)", 580, 15, "1 serve"],
+  ["Ramen, tonkotsu (500ml bowl)", 550, 22, "1 bowl"],
+  ["Laksa, coconut (400ml)", 520, 22, "1 bowl"],
+  ["Pho, beef (500ml)", 380, 25, "1 bowl"],
+  ["Butter Chicken + rice (400g)", 650, 32, "1 plate"],
+  ["Chicken Tikka Masala + rice (400g)", 680, 34, "1 plate"],
+  ["Sushi Train, salmon nigiri (2 pieces)", 120, 8, "2 pieces"],
+  ["Sushi Train, tuna nigiri (2 pieces)", 110, 9, "2 pieces"],
+  ["Dumplings, pork steamed (6 pieces)", 300, 15, "6 dumplings"],
+  ["Spring Roll, fried (2 pieces)", 200, 5, "2 rolls"],
+  ["San Choy Bao, chicken (3 cups)", 310, 22, "3 lettuce cups"],
+
+  // ── OTHER TAKEAWAY & CAFE ──
+  ["Meat Pie (175g)", 475, 15, "1 standard pie"],
+  ["Sausage Roll (90g)", 340, 10, "1 standard roll"],
+  ["Party Pie (60g)", 162, 5, "1 pie"],
+  ["Pasty (180g)", 440, 12, "1 pasty"],
+  ["Fish & Chips, fish (180g)", 380, 28, "1 piece battered"],
+  ["Fish & Chips, chips (150g)", 420, 5, "standard serve"],
+  ["Sushi, chicken caesar wrap (200g)", 380, 22, "1 wrap"],
+  ["Caesar Salad, with chicken (300g)", 380, 28, "1 restaurant serve"],
+  ["BLT Sandwich (200g)", 410, 20, "1 sandwich"],
+  ["Ham & Cheese Toastie (200g)", 430, 22, "1 sandwich"],
+  ["Chicken Schnitzel, crumbed (200g)", 420, 38, "1 schnitzel"],
+  ["Chicken Parmigiana (350g)", 680, 48, "pub serve"],
+  ["Steak sandwich, café (300g)", 620, 38, "1 sandwich"],
+  ["Quiche, slice (120g)", 330, 12, "1 slice"],
+  ["Dim Sim, steamed (55g)", 80, 4, "1 dim sim"],
+  ["Dim Sim, fried (55g)", 105, 4, "1 dim sim"],
+  ["Sushi Roll, tuna (8 pieces)", 290, 16, "1 roll"],
+  ["Burrito, chicken (300g)", 540, 30, "1 burrito"],
+  ["Burrito Bowl, chicken (400g)", 560, 38, "1 bowl"],
+  ["Nachos, loaded (350g)", 680, 22, "1 serve"],
+  ["Falafel wrap (250g)", 470, 14, "1 wrap"],
+  ["Lamb Kebab, doner (350g)", 620, 35, "1 wrap"],
+  ["Acai Bowl (300g)", 380, 6, "1 bowl"],
+  ["Smashed Avo on Toast (2 slices)", 420, 9, "café style"],
+  ["Eggs Benedict (2 eggs)", 480, 22, "café style"],
+  ["Big Breakfast, café (full)", 850, 42, "full café plate"],
+  ["Chocolate Muffin, café (120g)", 440, 6, "1 muffin"],
+  ["Blueberry Muffin, café (120g)", 420, 6, "1 muffin"],
+  ["Banana Bread, café (120g)", 350, 5, "1 thick slice"],
+  ["Almond Croissant (90g)", 420, 9, "1 croissant"],
+  ["Scone with jam & cream (100g)", 350, 5, "1 scone"],
+  ["Long Black (240ml)", 8, 0, "standard"],
+  ["Chai Latte (300ml)", 200, 8, "standard"],
+  ["Hot Chocolate (300ml)", 260, 9, "standard"],
+  ["Smoothie, green (400ml)", 220, 5, "1 cup"],
+  ["Smoothie, berry (400ml)", 280, 4, "1 cup"],
+  ["Smoothie, banana (400ml)", 310, 8, "1 cup"],
+].map(([name, cal, protein, serving]) => ({ name, cal, protein, serving }));
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 const todayKey = new Date().toISOString().split("T")[0];
@@ -618,7 +1085,7 @@ function renderDashboard() {
 }
 
 // ─── FOOD ─────────────────────────────────────────────────────────────────────
-let quickVisible = false;
+let customVisible = false;
 
 function renderFood() {
   const cal = totalCal(), pro = totalPro();
@@ -635,7 +1102,7 @@ function renderFood() {
   } else {
     list.innerHTML = foods.map(f => `
       <div class="food-entry">
-        <div><div class="food-name">${f.name}</div><div class="food-meta">${f.cal} kcal · ${f.protein}g protein</div></div>
+        <div><div class="food-name">${f.name}</div><div class="food-meta">${f.cal} kcal · ${f.protein}g protein${f.serving ? ' · ' + f.serving : ''}</div></div>
         <button class="food-del" onclick="removeFood(${f.id})">✕</button>
       </div>`).join("");
     $("food-totals").classList.remove("hidden");
@@ -645,19 +1112,56 @@ function renderFood() {
   }
 }
 
-function buildQuickFoods() {
-  const qf = $("quick-foods");
-  qf.innerHTML = COMMON_FOODS.map(f => `
-    <button class="quick-food" onclick="quickAdd('${f.name.replace(/'/g,"\\'")}',${f.cal},${f.protein})">
-      <span>${f.name}</span><span>${f.cal}kcal · ${f.protein}g</span>
+function searchFoods() {
+  const q = $("food-search").value.trim().toLowerCase();
+  const hint = $("food-search-hint");
+  const results = $("food-search-results");
+  if (q.length < 2) {
+    results.innerHTML = "";
+    hint.style.display = "block";
+    return;
+  }
+  hint.style.display = "none";
+  const matches = FOOD_DB.filter(f => f.name.toLowerCase().includes(q)).slice(0, 20);
+  if (!matches.length) {
+    results.innerHTML = `<div style="color:#3a5060;font-size:12px;font-family:'Space Mono',monospace;padding:8px 0;text-align:center">No results — try Custom Food below</div>`;
+    return;
+  }
+  results.innerHTML = matches.map((f, i) => `
+    <button onclick="logFromDB(${FOOD_DB.indexOf(f)})" style="background:#0b0f14;border:1px solid #1a2535;border-radius:8px;padding:9px 12px;color:#c0d0e0;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;transition:border-color 0.15s">
+      <div>
+        <div style="font-weight:500">${f.name}</div>
+        <div style="font-size:10px;color:#4a6070;font-family:'Space Mono',monospace;margin-top:2px">${f.serving}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-left:8px">
+        <div style="font-family:'Space Mono',monospace;font-size:11px;color:#00e5ff">${f.cal} kcal</div>
+        <div style="font-family:'Space Mono',monospace;font-size:10px;color:#69ff47">${f.protein}g pro</div>
+      </div>
     </button>`).join("");
 }
 
-function toggleQuick() {
-  quickVisible = !quickVisible;
-  const el = $("quick-foods");
-  if (quickVisible) { el.classList.remove("hidden"); el.style.display = "flex"; buildQuickFoods(); }
-  else { el.classList.add("hidden"); }
+function logFromDB(idx) {
+  const f = FOOD_DB[idx];
+  today().foods.push({ id: Date.now(), name: f.name, cal: f.cal, protein: f.protein, serving: f.serving });
+  saveDay();
+  $("food-search").value = "";
+  $("food-search-results").innerHTML = "";
+  $("food-search-hint").style.display = "block";
+  renderFood();
+}
+
+function clearSearch() {
+  $("food-search").value = "";
+  $("food-search-results").innerHTML = "";
+  $("food-search-hint").style.display = "block";
+}
+
+function toggleCustom() {
+  customVisible = !customVisible;
+  const form = $("custom-food-form");
+  const icon = $("custom-toggle-icon");
+  if (customVisible) { form.classList.remove("hidden"); icon.textContent = "▴"; }
+  else { form.classList.add("hidden"); icon.textContent = "▾"; }
 }
 
 function addFood() {
@@ -668,14 +1172,6 @@ function addFood() {
   today().foods.push({ id: Date.now(), name, cal, protein: pro });
   saveDay();
   $("food-name").value = ""; $("food-cal").value = ""; $("food-pro").value = "";
-  renderFood();
-}
-
-function quickAdd(name, cal, protein) {
-  today().foods.push({ id: Date.now(), name, cal, protein });
-  saveDay();
-  $("quick-foods").classList.add("hidden");
-  quickVisible = false;
   renderFood();
 }
 
@@ -924,7 +1420,6 @@ function logWeight() {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 renderDashboard();
-buildQuickFoods();
 </script>
 </body>
 </html>
